@@ -35,6 +35,16 @@ impl App {
         };
         self.blocks.push(genesis_block);
     }
+
+    //add func for adding new blocks
+    fn try_add_block(&mut self, block: Block){
+        let latest_block = self.blocks.last().expect("There is at least one block");
+        if self.is_block_valid(&block, latest_block){
+            self.blocks.push(block);
+        } else {
+            error!("could not add blocks - invalid"); //add error handling other than message, race-conditions invalid state breaks node
+        }
+    }
 }
 
 fn main() {

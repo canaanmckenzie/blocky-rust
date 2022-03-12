@@ -1,3 +1,5 @@
 TO DO:
 
 + add persistence when finished
+
++ add error handling if block fails to add to node
