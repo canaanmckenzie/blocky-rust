@@ -1,12 +1,8 @@
-
-fn main() {
-
 use serde::{Serialize,Deserialize};
 
-
 pub struct App {
-    
-    pub blocks: Vec,
+
+    pub blocks: Vec<Block>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -19,7 +15,15 @@ pub struct Block {
     pub nonce: u64,
 }
 
+impl App {
+    fn new() -> Self{
+        Self {blocks: vec![]}
+    }
+}
 
+fn main() {
 
     println!("Hello, world!");
 }
+
+
