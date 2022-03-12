@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = "0.4"
-sha2 = "0.9.8"
-serde = {version= "1.0", features = ["derive"]} 
+chrono = "0.4" #keep time
+sha2 = "0.9.8" #use Sha265 for hashing
+serde = {version= "1.0", features = ["derive"]} #json handling
 serde_json = "1.0"
 libp2p = {version= "0.39", features = ["tcp-tokio", "mdns"]}
 tokio = {version = "1.0", features = ["io-util", "io-std", "macros", "rt", "rt-multi-thread","sync","time"]}

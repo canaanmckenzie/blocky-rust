@@ -19,6 +19,9 @@ pub struct Block {
     pub nonce: u64,
 }
 
+//simple mining scheme basis - starts with 00 denotes "difficulty" network for mining a block
+//in more complicated network this is a defined network attribute, agreed on between nodes by consensus alg + net hash pwr
+//consensus guarantees a new block is prepared in a set amount of time
 const DIFFICULTY_PREFIX: &str = "00";
 
 
@@ -36,6 +39,7 @@ fn calculate_hash(id: u64,  timestamp: i64, previous_hash: &str, data: &str, non
     hasher.finalize().as_slice().to_owned()
 }
 
+//check whether a hash fits into difficulty prefix condition
 fn hash_to_binary_representation(hash: &[u8]) -> String {
     let mut res: String = String::default();
     for i in hash {
@@ -74,7 +78,7 @@ impl App {
         }
     }
 
-    //check if block is valid
+    //check if block is valid 
     fn is_block_valid(&self, block: &Block, previous_block: &Block) -> bool {
         if block.previous_hash != previous_block.hash {
             warn!("block with id: {} has wrong previous_hash", block.id);
@@ -98,6 +102,21 @@ impl App {
             warn!("block with id: {} has invalid hash",block.id);
             return false;
         } 
+        true
+    }
+
+    //check if chain is valid
+    fn is_chain_valid(&self, chain: &[Block]) -> bool {
+        for i in 0..chain.len(){
+            if i == 0 {
+                continue;
+            }
+            let first = chain.get(i-1).expect("has to exist");
+            let second = chain.get(i).expect("has to exist");
+            if !self.is_block_valid(second, first) {
+                false;
+            }
+        }
         true
     }
 }
