@@ -48,6 +48,45 @@ fn hash_to_binary_representation(hash: &[u8]) -> String {
     res 
 }
 
+//initiate block and implement simple mining scheme
+impl Block {
+    pub fn new(id: u64, previous_hash: String, data: String) -> Self {
+        let now = Utc::now();
+        let (nonce, hash) = mine_block(id, now.timestamp(), &previous_hash, &data);
+
+        Self {
+            id,
+            hash,
+            timestamp: now.timestamp(),
+            previous_hash,
+            data,
+            nonce,
+        }
+    }
+}
+
+//mine logic - return nonce in hash to verify data 
+fn mine_block(id: u64, timestamp: i64, previous_hash: &str, data: &str) -> (u64, String) {
+    info!("Mining block..."); 
+    let mut nonce = 0;
+
+    //infinite mining loop...add timeout?
+    loop {
+        if nonce % 100000 == 0 { 
+            info!("nonce: {}", nonce); //"ticker - log iterations"
+        }
+
+        let hash =  calculate_hash(id, timestamp, previous_hash, data, nonce);
+        let binary_hash = hash_to_binary_representation(&hash);
+        //check if hash adheres to difficulty criteria
+        if binary_hash.starts_with(DIFFICULTY_PREFIX) {
+            info!(
+                "mined! nonce: {}, hash: {}, binary_hash: {}", nonce, hex::encode(&hash), binary_hash);
+            return (nonce, hex::encode(hash)); //if adheres, log block mined otherwise go again 
+        }
+        nonce += 1;
+    }
+}
 
 //simple consensus criteria, initialize chain empty, ask next block on chain size, if bigger, use theirs
 impl App {
