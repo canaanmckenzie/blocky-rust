@@ -2,6 +2,7 @@
 
 use super::{App, Block};
 use log::{error,info};
+use tokio::sync::mpsc;
 use serde::{Serialize,Deserialize};
 use libp2p::{
 	floodsub::{Floodsub,FloodsubEvent,Topic}, //libp2p's publish subscribe protocol
@@ -12,11 +13,12 @@ use libp2p::{
 	PeerId,
 };
 
+use once_cell::sync::Lazy;
 
-pub static KEYS: Lazy = Lazy::new(identity::Keypair::generate_ed25519);
-pub static PEER_ID: Lazy =Lazy::new( || PeerId::from(KEYS.public()));
-pub static CHAIN_TOPIC: Lazy = Lazy::new( || Topic::new("chains")); //simple - broadcasts to all nodes on network client request and our response, this is ipfs but needs security layer
-pub static BLOCK_TOPIC: Lazy = Lazy::new( || Topic::new("blocks"));
+pub static KEYS: Lazy<identity::Keypair> = Lazy::new(identity::Keypair::generate_ed25519);
+pub static PEER_ID: Lazy<PeerId> =Lazy::new( || PeerId::from(KEYS.public()));
+pub static CHAIN_TOPIC: Lazy<Topic> = Lazy::new( || Topic::new("chains")); //simple - broadcasts to all nodes on network client request and our response, this is ipfs but needs security layer
+pub static BLOCK_TOPIC: Lazy<Topic> = Lazy::new( || Topic::new("blocks"));
 
 #[derive(Serialize,Deserialize,Debug)]
 pub struct ChainResponse {
@@ -41,9 +43,9 @@ pub struct AppBehavior {
 	pub floodsub: Floodsub,
 	pub mdns: Mdns,
 	#[behavior(ignore)]
-	pub response_sender: mspc::UnboundedSender,
+	pub response_sender: mpsc::UnboundedSender<ChainResponse>,
 	#[behavior(ignore)]
-	pub init_sender: mpsc::UnboundedSender,
+	pub init_sender: mpsc::UnboundedSender<bool>,
 	#[behavior(ignore)]
 	pub app: App,
 }
@@ -51,8 +53,8 @@ pub struct AppBehavior {
 impl AppBehavior {
 	pub async fn new(
 		app: App,
-		response_sender: mpsc::UnboundedSender,
-		init_sender: mpsc::UnboundedSender,
+		response_sender: mpsc::UnboundedSender<ChainResponse>,
+		init_sender: mpsc::UnboundedSender<bool>,
 	) -> Self {
 		let mut behavior = Self {
 			app,
@@ -92,11 +94,11 @@ impl NetworkBehaviorEventProcess<MdnsEvent> for AppBehavior {
 }
 
 //incoming event handler
-impl NetworkBehaviorEventProcess for AppBehavior {
+impl NetworkBehaviorEventProcess<FloodsubEvent> for AppBehavior {
 	fn inject_event(&mut self, event: FloodsubEvent){
 		if let FloodsubEvent::Message(msg) = event {
 
-			if let Ok(resp) = serde_json::from_slice::(&msg.data){
+			if let Ok(resp) = serde_json::from_slice::<ChainResponse>(&msg.data){
 				if resp.receiver == PEER_ID.to_string() {
 					info!("Response from {}:",msg.source);
 					resp.blocks.iter().for_each(|r| info!(":{?}", r));
@@ -104,7 +106,7 @@ impl NetworkBehaviorEventProcess for AppBehavior {
 					self.app.blocks =  self.apps.choose_chain(self.app.blocks.clone(),resp.blocks); 
 				}
 
-			} else if let Ok(resp) = serde_json::from_slice::(&msg.data) {
+			} else if let Ok(resp) = serde_json::from_slice::<LocalChainRequest>(&msg.data) {
 				info!("sending local chain to {}",msg.source.to_string());
 				let peer_id = resp.from_peer_id; 
 

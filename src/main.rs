@@ -10,6 +10,17 @@ use tokio::{
     sync::mpsc,
     time::sleep,
 };
+
+use libp2p::{
+    core::upgrade,
+    futures::StreamExt,
+    mplex,
+    noise::{Keypair,NoiseConfig,X25519Spec},
+    swarm::{Swarm, SwarmBuilder},
+    tcp::TokioTcpConfig,
+    transport,
+};
+
 use std::time::Duration;
 
 mod p2p;
@@ -202,7 +213,7 @@ async fn main() {
     let (response_sender, mut response_rcv) = mpsc::unbounded_channel();
     let (init_sender, mut init_rcv) = mpsc::unbounded_channel();
 
-    let auth_keys = Keypair::::new()
+    let auth_keys = Keypair::<X25519Spec>::new() //where does this ed25519 keypair come from
         .into_authentic(&p2p::KEYS)
         .expec("can create auth keys");
 
@@ -212,12 +223,13 @@ async fn main() {
         .multiplex(mplex::MplexConfig::new())
         .boxed();
 
-    let behavior = p2p::AppBehavior::new(App::new(), response_sender, init_sender.clone()).await();
+    let behavior = p2p::AppBehavior::new(App::new(), response_sender, init_sender.clone()).await;
 
     let mut swarm = SwarmBuilder::new(transp, behavior,*p2p::PEER_ID)
         .executor(Box::new(|fut|{
             spawn(fut);
-        })).build();
+        }))
+        .build();
 
     let mut stdin = BufReader::new(stdin()).lines();
 
@@ -227,9 +239,10 @@ async fn main() {
             .parse()
             .expect("can get a local socket"),
     )
+    .expect("swarm can be started");
 
     spawn(async move{
-        sleep(Duration::from_secs(1)).await()
+        sleep(Duration::from_secs(1)).await;
         info!("sending init event");
         init_sender.send(true).expect("can send init event");
     });
