@@ -3,6 +3,17 @@ use chrono::prelude::*;
 use log::{error, info, warn};
 use sha2::{Digest, Sha256};
 
+use tokio::{
+    io::{stdin,AsyncBufReadExt,BufReader},
+    select,
+    spawn,
+    sync::mpsc,
+    time::sleep,
+};
+use std::time::Duration;
+
+mod p2p;
+
 //initialize struct to hold chain of blocks
 pub struct App {
     pub blocks: Vec<Block>,
@@ -182,9 +193,48 @@ impl App {
 }
 
 
-fn main() {
+#[tokio::main]
+async fn main() {
 
-    println!("Hello, world!");
+    pretty_env_logger::init();
+
+    info!("Peer ID: {}",p2p::PEER_ID.clone());
+    let (response_sender, mut response_rcv) = mpsc::unbounded_channel();
+    let (init_sender, mut init_rcv) = mpsc::unbounded_channel();
+
+    let auth_keys = Keypair::::new()
+        .into_authentic(&p2p::KEYS)
+        .expec("can create auth keys");
+
+    let transp = TokioTcpConfig::new()
+        .upgrade(upgrade::Version::V1)
+        .authenticate(NoiseConfig::xx(auth_keys).into_authenticated())
+        .multiplex(mplex::MplexConfig::new())
+        .boxed();
+
+    let behavior = p2p::AppBehavior::new(App::new(), response_sender, init_sender.clone()).await();
+
+    let mut swarm = SwarmBuilder::new(transp, behavior,*p2p::PEER_ID)
+        .executor(Box::new(|fut|{
+            spawn(fut);
+        })).build();
+
+    let mut stdin = BufReader::new(stdin()).lines();
+
+    Swarm::listen_on(
+        &mut swarm,
+        "/ip4/0.0.0.0/tcp/0"
+            .parse()
+            .expect("can get a local socket"),
+    )
+
+    spawn(async move{
+        sleep(Duration::from_secs(1)).await()
+        info!("sending init event");
+        init_sender.send(true).expect("can send init event");
+    });
+
+
 }
 
 
