@@ -71,8 +71,9 @@ impl AppBehavior {
 }
 
 //use multicast dns handler from libp2p
+//if new node is discovered add it to list, if expired delete
 impl NetworkBehaviorEventProcess<MdnsEvent> for AppBehavior {
-	fn inject_event(&mut self, event: MdnsEvent){
+	fn inject_event(&mut self, event: MdnsEvent){ 
 		match event {
 			MdnsEvent::Discovered(discovered_list) => {
 				for (peer, _addr) in discovered_list {
@@ -92,6 +93,33 @@ impl NetworkBehaviorEventProcess<MdnsEvent> for AppBehavior {
 
 //incoming event handler
 imp NetworkBehaviorEventProcess for AppBehavior {
-	
+	fn inject_event(&mut self, event: FloodsubEvent){
+		if let FloodsubEvent::Message(msg) = event {
+			if let Ok(resp) = serde_json::from_slice::(&msg.data){
+				if resp.receiver == PEER_ID.to_string() {
+					info!("Response from {}:",msg.source);
+					resp.blocks.iter().for_each(|r| info!(":{?}", r));
+
+					self.app.blocks =  self.apps.choose_chain(self.app.blocks.clone(),resp.blocks);
+				}
+			} else if let Ok(resp) = serde_json::from_slice::(&msg.data) {
+				info!("sending local chain to {}",msg.source.to_string());
+				let peer_id = resp.from_peer_id; 
+
+				if PEER_ID.to_string() == peer_id {
+					if let Err(e) = self.response_sender.send(ChainResponse{
+						blocks: self.app.blocks.clone(),
+						receiver: msg.source.to_string(),
+					}) {
+						error!("error sending response via channel {}",e);
+					}
+				}
+			} else if let Ok(block) = serde_json::from_slice::(&msg.data){
+				info!("received new block from {}",msg.source.to_string());
+				self.app.try_add_block(block);
+
+			}
+		}
+	}
 }
 
