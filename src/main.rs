@@ -1,5 +1,7 @@
 use serde::{Serialize,Deserialize};
 use chrono::prelude::*;
+
+
 pub struct App {
 
     pub blocks: Vec<Block>,
@@ -15,12 +17,14 @@ pub struct Block {
     pub nonce: u64,
 }
 
+//simple consensus criteria, initialize chain empty, ask next block on chain size, if bigger, use theirs
 impl App {
     fn new() -> Self{
         Self {blocks: vec![]}
     }
 
     fn genesis(&mut self){
+        //hardcode the first block in chain, change later bootstrapping the chain
         let genesis_block =  Block{
             id: 0,
             timestamp: Utc::now().timestamp(),
