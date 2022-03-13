@@ -119,7 +119,7 @@ impl NetworkBehaviorEventProcess<FloodsubEvent> for AppBehavior {
 					}
 				}
 
-			} else if let Ok(block) = serde_json::from_slice::(&msg.data){ //check if new mined block is valid and add it to local chain
+			} else if let Ok(block) = serde_json::from_slice::<Block>(&msg.data){ //check if new mined block is valid and add it to local chain
 				info!("received new block from {}",msg.source.to_string());
 				self.app.try_add_block(block);
 
