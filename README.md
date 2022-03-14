@@ -1,3 +1,7 @@
+
+An implementation of a blockchain in Rust demonstrating the use of libp2p
+
+
 TO DO:
 
 + add persistence when finished
