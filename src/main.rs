@@ -18,7 +18,7 @@ use libp2p::{
     noise::{Keypair,NoiseConfig,X25519Spec},
     swarm::{Swarm, SwarmBuilder},
     tcp::TokioTcpConfig,
-    transport,
+    Transport,
 };
 
 use std::time::Duration;
@@ -215,7 +215,7 @@ async fn main() {
 
     let auth_keys = Keypair::<X25519Spec>::new() //where does this ed25519 keypair come from
         .into_authentic(&p2p::KEYS)
-        .expec("can create auth keys");
+        .expect("can create auth keys");
 
     let transp = TokioTcpConfig::new()
         .upgrade(upgrade::Version::V1)
@@ -223,7 +223,7 @@ async fn main() {
         .multiplex(mplex::MplexConfig::new())
         .boxed();
 
-    let behavior = p2p::AppBehavior::new(App::new(), response_sender, init_sender.clone()).await;
+    let behavior = p2p::AppBehaviour::new(App::new(), response_sender, init_sender.clone()).await;
 
     let mut swarm = SwarmBuilder::new(transp, behavior,*p2p::PEER_ID)
         .executor(Box::new(|fut|{

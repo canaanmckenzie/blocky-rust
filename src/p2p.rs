@@ -8,8 +8,8 @@ use libp2p::{
 	floodsub::{Floodsub,FloodsubEvent,Topic}, //libp2p's publish subscribe protocol
 	identity, //identify client in network
 	mdns::{Mdns,MdnsEvent},
-	swarm::{NetworkBehaviorEventProcess,Swarm},
-	NetworkBehavior,
+	swarm::{NetworkBehaviourEventProcess,Swarm},
+	NetworkBehaviour,
 	PeerId,
 };
 
@@ -38,25 +38,25 @@ pub enum EventType{
 	Init,
 }
 
-#[derive(NetworkBehavior)]
-pub struct AppBehavior {
+#[derive(NetworkBehaviour)]
+pub struct AppBehaviour {
 	pub floodsub: Floodsub,
 	pub mdns: Mdns,
-	#[behavior(ignore)]
+	#[behaviour(ignore)]
 	pub response_sender: mpsc::UnboundedSender<ChainResponse>,
-	#[behavior(ignore)]
+	#[behaviour(ignore)]
 	pub init_sender: mpsc::UnboundedSender<bool>,
-	#[behavior(ignore)]
+	#[behaviour(ignore)]
 	pub app: App,
 }
 
-impl AppBehavior {
+impl AppBehaviour {
 	pub async fn new(
 		app: App,
 		response_sender: mpsc::UnboundedSender<ChainResponse>,
 		init_sender: mpsc::UnboundedSender<bool>,
 	) -> Self {
-		let mut behavior = Self {
+		let mut behaviour = Self {
 			app,
 			floodsub: Floodsub::new(*PEER_ID),
 			mdns: Mdns::new(Default::default())
@@ -65,16 +65,16 @@ impl AppBehavior {
 			response_sender,
 			init_sender,
 		};
-		behavior.floodsub.subscibe(CHAIN_TOPIC.clone());
-		behavior.floodsub.subscibe(BLOCK_TOPIC.clone());
+		behaviour.floodsub.subscribe(CHAIN_TOPIC.clone());
+		behaviour.floodsub.subscribe(BLOCK_TOPIC.clone());
 
-		behavior
+		behaviour
 	}
 }
 
 //use multicast dns handler from libp2p
 //if new node is discovered add it to list, if expired delete
-impl NetworkBehaviorEventProcess<MdnsEvent> for AppBehavior {
+impl NetworkBehaviourEventProcess<MdnsEvent> for AppBehaviour {
 	fn inject_event(&mut self, event: MdnsEvent){ 
 		match event {
 			MdnsEvent::Discovered(discovered_list) => {
@@ -94,16 +94,16 @@ impl NetworkBehaviorEventProcess<MdnsEvent> for AppBehavior {
 }
 
 //incoming event handler
-impl NetworkBehaviorEventProcess<FloodsubEvent> for AppBehavior {
+impl NetworkBehaviourEventProcess<FloodsubEvent> for AppBehaviour {
 	fn inject_event(&mut self, event: FloodsubEvent){
 		if let FloodsubEvent::Message(msg) = event {
 
 			if let Ok(resp) = serde_json::from_slice::<ChainResponse>(&msg.data){
 				if resp.receiver == PEER_ID.to_string() {
 					info!("Response from {}:",msg.source);
-					resp.blocks.iter().for_each(|r| info!(":{?}", r));
+					resp.blocks.iter().for_each(|r| info!("{:?}", r));
 
-					self.app.blocks =  self.apps.choose_chain(self.app.blocks.clone(),resp.blocks); 
+					self.app.blocks =  self.app.choose_chain(self.app.blocks.clone(),resp.blocks); 
 				}
 
 			} else if let Ok(resp) = serde_json::from_slice::<LocalChainRequest>(&msg.data) {
