@@ -1,5 +1,5 @@
 
-An implementation of a blockchain in Rust demonstrating the use of libp2p
+**An implementation of a blockchain in Rust demonstrating the use of libp2p**
 
 
 TO DO:
