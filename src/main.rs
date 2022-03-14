@@ -259,7 +259,7 @@ async fn main() {
                     Some(p2p::EventType::Init)
                 }
 
-                event =  Swarm.select_next_some() => {
+                event =  swarm.select_next_some() => {
                     info!("Unhandled Swarm event: {:?}",event); //if noise from swarm comes in eg connection disconnection handle and log
                     None
                 },
@@ -276,7 +276,7 @@ async fn main() {
 
                     if !peers.is_empty(){
                         let req = p2p::LocalChainRequest{
-                            from_peer_id: peers.iter().last().expecty("at least one peer").to_string(),
+                            from_peer_id: peers.iter().last().expect("at least one peer").to_string(),
                         };
 
                         let json = serde_json::to_string(&req).expect("can jsonify request");
@@ -293,7 +293,7 @@ async fn main() {
                 p2p::EventType::Input(line)=> match line.as_str(){
                     "ls p"=> p2p::handle_print_peers(&swarm), //user command list peers
                     cmd if cmd.starts_with("ls c")=> p2p::handle_print_chain(&swarm), //user command list local blockchain
-                    cmd if cmd.starts_with("create b")=> p2p::handle_create_block(cmd,&swarm), //create b data will create block with data "data" -use money sign
+                    cmd if cmd.starts_with("create b")=> p2p::handle_create_block(cmd,&mut swarm), //create b data will create block with data "data" -use money sign
                     _=>error!("unknown command"),
                 },
 

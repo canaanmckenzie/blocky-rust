@@ -14,6 +14,7 @@ use libp2p::{
 };
 
 use once_cell::sync::Lazy;
+use std::collections::HashSet;
 
 pub static KEYS: Lazy<identity::Keypair> = Lazy::new(identity::Keypair::generate_ed25519);
 pub static PEER_ID: Lazy<PeerId> =Lazy::new( || PeerId::from(KEYS.public()));
@@ -33,7 +34,7 @@ pub struct LocalChainRequest {
 
 //keep application in sync with incoming and outgoing network traffic
 pub enum EventType{
-	LocalChainRequest(ChainResponse),
+	LocalChainResponse(ChainResponse),
 	Input(String),
 	Init,
 }
@@ -149,23 +150,24 @@ pub fn handle_print_peers(swarm: &Swarm<AppBehaviour>) {
 pub fn handle_print_chain(swarm: &Swarm<AppBehaviour>){
 	info!("Local Blockchain:");
 	let pretty_json = 
-		serde_json::to_string_pretty(&swarm.behaviour().app.blocks().expect("can jsonify blocks"));
+		serde_json::to_string_pretty(&swarm.behaviour().app.blocks).expect("can jsonify blocks");
 	info!("{}", pretty_json);
 }
 
-pub fn handle_create_block(cmd: &str, swarm &mut Swarm<AppBehaviour>){
+//add logic for r-trying, add to queue, and see whether it goes to agreed upon blockchain and if not get copy of agreed blockchain
+pub fn handle_create_block(cmd: &str, swarm: &mut Swarm<AppBehaviour>){ 
 	if let Some(data) = cmd.strip_prefix("create b"){
 		let behaviour = swarm.behaviour_mut();
 		let latest_block = behaviour.app.blocks.last().expect("there is at least one block");
-		let block = Block::new(){
+		let block = Block::new(
 			latest_block.id+1,
 			latest_block.hash.clone(),
 			data.to_owned(),
-		};
+		);
 
 		let json = serde_json::to_string(&block).expect("can jsonify request");
 		behaviour.app.blocks.push(block);
 		info!("Broadcasting new block");
-		behaviour.floodsub.publish(BLOCK_TOPIC.clone(),json.as_byes());
+		behaviour.floodsub.publish(BLOCK_TOPIC.clone(),json.as_bytes());
 	}
 }
