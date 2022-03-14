@@ -128,3 +128,8 @@ impl NetworkBehaviourEventProcess<FloodsubEvent> for AppBehaviour {
 	}
 }
 
+//helper functions for user input
+
+pub fn get_list_peers(swarm: &Swarm<AppBehaviour>) -> Vec<String>{
+	
+} 
