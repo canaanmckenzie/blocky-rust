@@ -30,9 +30,9 @@ cd directory blocky-rust
 
 commands:
 
-ls p - list peer address
-ls c - list local chain
-create b $data - mines a block with data $data and adds it to chain
++ ls p - list peer address
++ ls c - list local chain
++ create b $data - mines a block with data $data and adds it to chain
 
 - Simple test:
 
